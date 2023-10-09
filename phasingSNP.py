@@ -197,6 +197,8 @@ def phasing(output_directory):
                         block.append(node + ',' + str(partition1[node]))
                         queue.append(node)
                         node_flag[node] = 1
+            if len(block) == 2:
+                continue
             block = sorted(block, key=lambda x: int(x[:-2]))
             block_all.append(block)
         block_all = sorted(block_all, key=lambda x: int(x[0][:-2]))
