@@ -74,10 +74,11 @@ def phasing(output_directory):
                         snp_info[node_position][1] += 1
         delete_snp = []
         ratio = 0.85
+
         for snp in snp_info:
-            if max(snp_info[snp][0], snp_info[snp][1]) / (snp_info[snp][0] + snp_info[snp][1]) >= ratio or min(
-                    snp_info[snp][0], snp_info[snp][1]) == 1:
+            if max(snp_info[snp][0], snp_info[snp][1]) / (snp_info[snp][0] + snp_info[snp][1]) >= ratio or min(snp_info[snp][0], snp_info[snp][1]) == 1:
                 delete_snp.append(snp)
+
         for snp in delete_snp:
             del snp_info[snp]
 
@@ -127,6 +128,21 @@ def phasing(output_directory):
                             else:
                                 adjacency_list[node_position][vertex_position][1] += 1
 
+        linked_list = {}
+        adjacency_list_front = {}
+        for vertex in adjacency_list:
+            adjacency_list_front[vertex] = {}
+            for node in adjacency_list[vertex]:
+                adjacency_list_front[vertex][node] = adjacency_list[vertex][node]
+        snp_temp = []
+        for vertex in adjacency_list_front:
+            snp_temp.append(int(vertex))
+        snp_temp = sorted(snp_temp, key=lambda x: int(x))
+        linked_list[str(snp_temp[0])] = '0,' + str(snp_temp[1])
+        for i in range(1, len(snp_temp) - 1):
+            linked_list[str(snp_temp[i])] = str(snp_temp[i - 1]) + ',' + str(snp_temp[i + 1])
+        linked_list[str(snp_temp[-1])] = str(snp_temp[-2]) + ',0'
+
         min_edge_len = 1
         delete_vertex = []
         for vertex in adjacency_list:
@@ -136,6 +152,7 @@ def phasing(output_directory):
                     delete_node.append(node)
             for node in delete_node:
                 del adjacency_list[vertex][node]
+
             if len(adjacency_list[vertex]) == 0:
                 delete_vertex.append(vertex)
         for vertex in delete_vertex:
@@ -197,8 +214,6 @@ def phasing(output_directory):
                         block.append(node + ',' + str(partition1[node]))
                         queue.append(node)
                         node_flag[node] = 1
-            if len(block) == 2:
-                continue
             block = sorted(block, key=lambda x: int(x[:-2]))
             block_all.append(block)
         block_all = sorted(block_all, key=lambda x: int(x[0][:-2]))
@@ -334,8 +349,53 @@ def phasing(output_directory):
                 block_temp.append(node[:-2] + ',' + partition[node[:-2]])
             block_all_temp.append(block_temp)
 
+        block_all_new = []
+        block_flag = {}
+        for i in range(len(block_all_temp) - 1):
+            if i not in block_flag:
+                block_all_new.append(block_all_temp[i])
+                block_flag[i] = 1
+            if len(block_all_temp[i + 1]) == 2:
+                result = random.choice([0, 1])
+                if result == 1:
+                    block_flag[i + 1] = 1
+                    continue
+            if len(block_all_temp[i]) <= 30 and len(block_all_temp[i + 1]) <= 30:
+
+                block_all_new.append(block_all_temp[i + 1])
+                block_flag[i + 1] = 1
+                continue
+            front_position = block_all_new[-1][-1][:-2]
+            front_direction = block_all_new[-1][-1][-1]
+            next_position = block_all_temp[i + 1][0][:-2]
+            next_direction = block_all_temp[i + 1][0][-1]
+            if next_position in adjacency_list_front[front_position]:
+                if adjacency_list_front[front_position][next_position][0] > adjacency_list_front[front_position][next_position][1]:
+                    if front_direction == next_direction:
+                        block_all_new[-1].extend(block_all_temp[i + 1])
+                    else:
+                        for node in block_all_temp[i + 1]:
+                            node_position = node[:-2]
+                            node_direction = node[-1]
+                            block_all_new[-1].append(node_position + ',' + str(int(node_direction) * -1 + 1))
+                    block_flag[i + 1] = 1
+
+                elif adjacency_list_front[front_position][next_position][0] < adjacency_list_front[front_position][next_position][1]:
+                    if front_direction != next_direction:
+                        block_all_new[-1].extend(block_all_temp[i + 1])
+                    else:
+                        for node in block_all_temp[i + 1]:
+                            node_position = node[:-2]
+                            node_direction = node[-1]
+                            block_all_new[-1].append(node_position + ',' + str(int(node_direction) * -1 + 1))
+                    block_flag[i + 1] = 1
+            else:
+                block_all_new.append(block_all_temp[i + 1])
+                block_flag[i + 1] = 1
+
         outfile = open(output_directory + "/block-FM/block-" + chromosome + ".txt", 'w+')
-        for block in block_all_temp:
+
+        for block in block_all_new:
             temp = '\t'.join(block)
             outfile.write(temp + '\n')
         outfile.close()
